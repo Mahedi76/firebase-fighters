@@ -1,26 +1,38 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 import { FaEye } from "react-icons/fa";
 
 import { IoEyeOff } from "react-icons/io5";
 import MyContainer from "../components/MyContainer";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
 import { auth } from "../firebase/firebase.config";
 import { toast } from "react-toastify";
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { AuthContext } from "../context/AuthContext";
 
 
 const Signup = () => {
 
     const [show, setShow] = useState(false);
+    const {createUserWithEmailAndPasswordFunc, sendEmailVerificationFunc
+      , updateProfileFunc, setLoading, signOutUserFunc, setUser
+    } = useContext(AuthContext)
 
+  
+
+    const navigate = useNavigate()
 
     const handleSignup = (e) => {
         e.preventDefault();
+        const displayName = e.target.name?.value;
+        const photoURL = e.target.photo?.value;
         const email = e.target.email?.value;
         const password = e.target.password?.value;
+        
 
-        console.log("signup function entered",  {email, password});
+        console.log("signup function entered",  {email, password, displayName, photoURL
+        })
+       
         // console.log(password.length);
         // if(password.length < 6) {
         //     toast.error("Password should be at least 6 digit");
@@ -34,15 +46,48 @@ const Signup = () => {
                 "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character."
             );
          return;
+
+         
        
   }
 
-    
 
-        createUserWithEmailAndPassword(auth, email, password)
+    
+        // 1st step: Create User
+        // createUserWithEmailAndPassword(auth, email, password)
+        createUserWithEmailAndPasswordFunc(email, password)
         .then((res) => {
+
+          // 2nd step: Update Profile
+          updateProfileFunc(displayName, photoURL)
+          .then(() => {
             console.log(res);
-            toast.success("Signup successful");
+
+          // 3rd step: Email Verification
+            // sendEmailVerification(res.user)
+            sendEmailVerificationFunc()
+            .then((res) => {
+              console.log(res);
+              setLoading(false);
+        
+              // Signout user
+               signOutUserFunc()
+              .then(() => {
+                   toast.success("Signup successful. Check your email to validate your account.");
+                  setUser(null);
+                  navigate("/signin")
+              });
+            }).catch((e) => {
+              toast.error(e.message);
+            })
+
+        }).catch((e) => {
+          toast.error(e.message);
+        })
+
+
+            // console.log(res);
+            // toast.success("Signup successful");
         }).catch((e) => {
             console.log(e);
             console.log(e.code);
